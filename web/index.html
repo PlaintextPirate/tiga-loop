@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tiga Loop</title>
+  <meta name="description" content="Put GIFs and pictures on the Zoom75 TIGA keyboard screen, straight from your browser.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='2' y='7' width='28' height='18' rx='4' fill='%23c7cbd1'/%3E%3Crect x='5' y='10' width='22' height='12' rx='1.5' fill='%2307090c'/%3E%3Crect x='8' y='13' width='9' height='6' rx='1' fill='%233150c4'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <div class="page">
+    <header class="masthead">
+      <h1>Tiga Loop</h1>
+      <p class="lede">Trim, crop and send GIFs to the screen on your Zoom75 TIGA. Everything happens on-device.</p>
+    </header>
+
+    <p class="banner" id="unsupported" hidden>
+      This page needs Chrome or Edge on a computer: it talks to the keyboard over Web Bluetooth, which Safari and Firefox don't support.
+    </p>
+
+    <main class="studio">
+      <section class="stage" aria-label="Screen preview">
+        <div class="bezel">
+          <div class="glass">
+            <canvas id="lcd" width="320" height="172" aria-label="Preview of the keyboard screen"></canvas>
+            <div class="lcd-empty" id="lcdEmpty">
+              <span>Drop a GIF or picture anywhere on this page</span>
+            </div>
+          </div>
+        </div>
+        <dl class="readout" aria-live="polite">
+          <div><dt>Frames</dt><dd id="roFrames">–</dd></div>
+          <div><dt>Loop</dt><dd id="roLoop">–</dd></div>
+          <div><dt>Size</dt><dd id="roSize">–</dd></div>
+          <div><dt>Upload</dt><dd id="roTime">–</dd></div>
+        </dl>
+        <p class="note">Preview uses the screen's 16-bit colour. Playback speed is approximate.</p>
+      </section>
+
+      <ol class="steps">
+        <li class="step" id="stepFile">
+          <h2>Choose a GIF or picture</h2>
+          <label class="drop" id="drop">
+            <input type="file" id="file" accept="image/gif,image/png,image/jpeg,image/webp">
+            <span class="drop-text" id="dropText">Choose a file, or drop it here</span>
+          </label>
+        </li>
+
+        <li class="step" id="stepTrim" data-needs="animated">
+          <h2>Trim</h2>
+          <p class="hint">Keep only the part you want; long GIFs look smoother when trimmed than when thinned.</p>
+          <div class="range-pair">
+            <label>Start <output id="trimStartOut">1</output>
+              <input type="range" id="trimStart" min="0" max="0" value="0">
+            </label>
+            <label>End <output id="trimEndOut">1</output>
+              <input type="range" id="trimEnd" min="0" max="0" value="0">
+            </label>
+          </div>
+        </li>
+
+        <li class="step" id="stepCrop" data-needs="file">
+          <h2>Frame it</h2>
+          <p class="hint">Drag the box to choose what shows on the screen. Scroll or use the slider to zoom.</p>
+          <div class="cropper">
+            <canvas id="cropCanvas" width="560" height="320" aria-label="Crop area: drag to move"></canvas>
+          </div>
+          <div class="row">
+            <label class="grow">Zoom <output id="zoomOut">1.0×</output>
+              <input type="range" id="zoom" min="1" max="4" step="0.01" value="1">
+            </label>
+            <button type="button" class="quiet" id="recenter">Centre</button>
+          </div>
+        </li>
+
+        <li class="step" id="stepTiming" data-needs="animated">
+          <h2>Frames and speed</h2>
+          <div class="row two">
+            <label>Frames <output id="countOut">50</output>
+              <input type="range" id="count" min="2" max="50" value="50">
+            </label>
+            <label>Speed <output id="speedOut">5</output>
+              <input type="range" id="speed" min="1" max="10" value="5">
+            </label>
+          </div>
+          <p class="hint">Up to 50 frames. More frames means smoother motion and a longer upload (about 8 seconds per frame).</p>
+        </li>
+
+        <li class="step" id="stepSend" data-needs="file">
+          <h2>Send to the keyboard</h2>
+          <p class="hint">Keep the keyboard plugged into USB power while it uploads, and avoid typing on it. On battery it falls asleep mid-upload.</p>
+          <button type="button" class="primary" id="send" disabled>Send to keyboard</button>
+          <div class="progress" id="progress" hidden>
+            <div class="bar"><span id="bar"></span></div>
+            <p id="status" aria-live="polite"></p>
+          </div>
+          <div class="message" id="message" hidden></div>
+          <details class="recover">
+            <summary>If an upload fails</summary>
+            <p><strong>Before the tiger animation appears</strong>, nothing changed on the keyboard. Just send again.</p>
+            <p><strong>After it appears</strong>, wait two minutes and send once more. If the screen stays stuck, it needs a full power-off: unplugging USB isn't enough because it runs on its battery. Pull off the case, disconnect the battery from the board for at least 30 seconds, press a few keys, then reconnect.</p>
+          </details>
+        </li>
+      </ol>
+    </main>
+
+    <footer class="colophon">
+      <section>
+        <h2>Shortcuts on the keyboard</h2>
+        <table>
+          <tr><td><kbd>Fn</kbd> <kbd>Z</kbd> / <kbd>X</kbd> / <kbd>C</kbd></td><td>Bluetooth device 1, 2 or 3 (hold to pair)</td></tr>
+          <tr><td><kbd>Fn</kbd> <kbd>V</kbd></td><td>2.4G receiver (hold to pair)</td></tr>
+          <tr><td><kbd>Fn</kbd> <kbd>Space</kbd></td><td>Wired mode, with the cable plugged in</td></tr>
+          <tr><td><kbd>Fn</kbd> <kbd>Delete</kbd></td><td>Screen on or off</td></tr>
+          <tr><td><kbd>Fn</kbd> <kbd>PgUp</kbd> / <kbd>PgDn</kbd></td><td>Change screen page</td></tr>
+          <tr><td><kbd>Fn</kbd> <kbd>Enter</kbd></td><td>Open the page's sub-page</td></tr>
+          <tr><td><kbd>Fn</kbd> <kbd>Right Shift</kbd> <kbd>Enter</kbd></td><td>Back to the previous page</td></tr>
+          <tr><td><kbd>Fn</kbd> <kbd>Right Shift</kbd> <kbd>Delete</kbd></td><td>Keypress overlay on or off</td></tr>
+          <tr><td><kbd>Fn</kbd> <kbd>Backspace</kbd></td><td>Show the battery level on the number keys</td></tr>
+        </table>
+      </section>
+      <section>
+        <h2>About</h2>
+        <p>Your upload replaces the screen's one custom slot. CPU and GPU temperatures for the stats page need the small <a href="https://github.com/PlaintextPirate/tiga-loop#stats-feed">tiga-stats</a> command-line tool, because browsers can't read sensors.</p>
+        <p>Open source under GPL-2.0, building on <a href="https://github.com/MichiG21/tiga-zoom75-windows-media-display">MichiG21's protocol work</a>. Not affiliated with Meletrix or Wuque Studio. Provided as is, with no warranty, at your own risk. See the <a href="https://github.com/PlaintextPirate/tiga-loop#disclaimer">disclaimer</a>.</p>
+      </section>
+    </footer>
+  </div>
+</body>
+</html>

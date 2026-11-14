@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tiga-tool"
+version = "0.1.0"
+description = "Stats feed and animated-GIF uploader for the Meletrix / Wuque Zoom75 TIGA keyboard screen"
+readme = "README.md"
+license = { text = "GPL-2.0-only" }
+requires-python = ">=3.10"
+dependencies = ["hidapi>=0.14", "bleak>=0.22", "pillow>=10", "psutil>=5.9"]
+keywords = ["zoom75", "tiga", "meletrix", "wuque", "keyboard", "lcd", "gif"]
+classifiers = [
+  "License :: OSI Approved :: GNU General Public License v2 (GPLv2)",
+  "Operating System :: MacOS",
+  "Programming Language :: Python :: 3",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8"]
+
+[project.scripts]
+tiga-stats = "tiga_tool.stats:main"
+tiga-image = "tiga_tool.image:main"
+
+[tool.setuptools.package-data]
+tiga_tool = ["template/*.bin"]
