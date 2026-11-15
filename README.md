@@ -12,6 +12,10 @@ Tested on one Zoom75 TIGA with macOS on Apple Silicon. Linux and Windows should 
 
 ## Tiga Loop (browser)
 
+[![A 40-second walkthrough of Tiga Loop: choose a GIF, trim it, frame it, set the speed and send it](docs/demo-poster.png)](https://plaintextpirate.github.io/tiga-loop/demo.mp4)
+
+*Click the picture for a 40-second walkthrough (with sound).*
+
 Open **https://plaintextpirate.github.io/tiga-loop/** in Chrome or Edge on a Mac, Windows or Linux computer. Drop in a GIF, trim it, drag the crop box, pick the frame count and speed, and send. The preview uses the screen's 16-bit colour, and the page estimates the upload time. It needs Web Bluetooth, which Safari, Firefox and phones don't have.
 
 To run it locally, serve the `web/` folder (for example `python3 -m http.server -d web 8000`) and open http://localhost:8000 in Chrome. Opening the file directly doesn't work, because browsers block its scripts from `file://`.
@@ -102,6 +106,7 @@ The image file is a "DLX" container: a 352-byte header with the frame count, a s
 
 - **[MichiG21/tiga-zoom75-windows-media-display](https://github.com/MichiG21/tiga-zoom75-windows-media-display)** (GPL-2.0) reverse-engineered the BLE media protocol and the telemetry packet, and published the captured known-good container (`src/tiga_tool/template/known_good_2frame.bin`). This project builds on that work.
 - The multi-frame layout and speed byte were worked out by studying the Pocket Wuque Android app, for interoperability. The USB framing was cross-checked against Meletrix's web configurator. No vendor code is included.
+- The walkthrough video's music is ["Chill lofi inspired"](https://opengameart.org/content/chill-lofi-inspired) by omfgdude (CC0).
 
 ## Disclaimer
 

@@ -2,7 +2,7 @@ name: pages
 on:
   push:
     branches: [main]
-    paths: ["web/**", ".github/workflows/pages.yml"]
+    paths: ["web/**", "docs/demo.mp4", ".github/workflows/pages.yml"]
   workflow_dispatch:
 permissions:
   contents: read
@@ -15,7 +15,7 @@ jobs:
     environment: { name: github-pages, url: "${{ steps.deploy.outputs.page_url }}" }
     steps:
       - uses: actions/checkout@v4
-      - run: mkdir site && cp web/*.html web/*.css web/*.js site/
+      - run: mkdir site && cp web/*.html web/*.css web/*.js docs/demo.mp4 site/
       - uses: actions/upload-pages-artifact@v3
         with: { path: site }
       - id: deploy

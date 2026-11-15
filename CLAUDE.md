@@ -22,7 +22,7 @@ tiga-stats --dry-run --once         # prints a packet, sends nothing
 tiga-stats -i --mock                # arrow keys change the rate; clock-driven test values
 ```
 
-CI (`.github/workflows/tests.yml`) runs both suites; `pages.yml` deploys `web/*.{html,css,js}` to GitHub Pages on pushes to `main` (repo Settings → Pages → Source: GitHub Actions).
+CI (`.github/workflows/tests.yml`) runs both suites; `pages.yml` deploys `web/*.{html,css,js}` plus the walkthrough video `docs/demo.mp4` (linked from the README via `docs/demo-poster.png`) to GitHub Pages on pushes to `main` (repo Settings → Pages → Source: GitHub Actions).
 
 ## Rules for working on this repo
 
