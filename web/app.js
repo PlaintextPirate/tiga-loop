@@ -13,11 +13,14 @@ const state = {
   trimStart: 0, trimEnd: 0,
   zoom: 1, cx: 0, cy: 0,
   count: MAX_FRAMES, speed: 5,
+  countAuto: true,     // follow the most frames the trim allows until the user picks fewer
+  countWanted: MAX_FRAMES,   // what the user picked, kept while trimming narrows the range
   prepared: [],        // RGB565 frames for the current settings
   busy: false,
 };
 
 const animated = () => state.frames.length > 1;
+const cssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
 // ------------------------------------------------------------ decoding --
 async function decodeFile(file) {
@@ -57,13 +60,14 @@ async function loadFile(file) {
     return showMessage("error", `Couldn't read ${escapeHtml(file.name)}: ${escapeHtml(e.message)}`);
   }
   state.frames.forEach((b) => b.close?.());
+  stripThumbs = null;
   Object.assign(state, {
     name: file.name, frames: decoded.frames,
     w: decoded.frames[0].width, h: decoded.frames[0].height,
     trimStart: 0, trimEnd: decoded.frames.length - 1, zoom: 1,
   });
   state.cx = state.w / 2; state.cy = state.h / 2;
-  state.count = Math.min(Math.max(2, state.frames.length), MAX_FRAMES);   // as many as fit
+  state.countAuto = true;   // as many frames as fit, for the best chance of the whole GIF
 
   const note = decoded.total > decoded.frames.length ? ` (${decoded.frames.length} of ${decoded.total} frames kept)` : "";
   $("dropText").textContent = `${file.name}${animated() ? ` · ${decoded.total} frames` : ""}${note}`;
@@ -89,7 +93,7 @@ let view = { s: 1, ox: 0, oy: 0 };
 
 function drawCropper() {
   const W = cropCanvas.width, H = cropCanvas.height;
-  cctx.fillStyle = "#2a2e34";
+  cctx.fillStyle = "#1c1f26";
   cctx.fillRect(0, 0, W, H);
   if (!state.frames.length) return;
   const s = Math.min(W / state.w, H / state.h);
@@ -107,7 +111,7 @@ function drawCropper() {
   cctx.strokeStyle = "#ffffff";
   cctx.lineWidth = 2;
   cctx.strokeRect(bx + 1, by + 1, bw - 2, bh - 2);
-  cctx.fillStyle = "#3150c4";
+  cctx.fillStyle = cssVar("--accent");
   for (const [x, y] of [[bx, by], [bx + bw, by], [bx, by + bh], [bx + bw, by + bh]]) {
     cctx.fillRect(x - 5, y - 5, 10, 10);
   }
@@ -214,9 +218,9 @@ function syncControls() {
   $("trimEndOut").textContent = state.trimEnd + 1;
 
   const span = state.trimEnd - state.trimStart + 1;
-  const maxCount = Math.max(2, Math.min(MAX_FRAMES, span));
+  const maxCount = state.frames.length ? Math.max(2, Math.min(MAX_FRAMES, span)) : MAX_FRAMES;
   $("count").max = maxCount;
-  state.count = Math.min(state.count, maxCount);
+  state.count = state.countAuto ? maxCount : Math.min(state.countWanted, maxCount);
   $("count").value = state.count;
   $("countOut").textContent = state.count;
   $("speed").value = state.speed;
@@ -232,7 +236,92 @@ function syncControls() {
   });
   $("lcdEmpty").hidden = state.frames.length > 0;
   updateSendButton();
+  drawStrip();
 }
+
+// ----------------------------------------------------------- trim strip --
+// A row of thumbnails across the whole clip; the kept range is outlined and
+// its ends can be dragged. The range sliders stay the accessible control.
+const strip = $("strip");
+const sctx = strip.getContext("2d");
+let stripThumbs = null;     // thumbnails rendered at the strip's current size
+
+function sizeStrip() {
+  const dpr = devicePixelRatio || 1;
+  const w = Math.max(1, Math.round(strip.clientWidth * dpr)), h = Math.round(strip.clientHeight * dpr);
+  if (strip.width !== w || strip.height !== h) { strip.width = w; strip.height = h; stripThumbs = null; }
+}
+
+function buildThumbs() {
+  const W = strip.width, H = strip.height, len = state.frames.length;
+  const c = Object.assign(document.createElement("canvas"), { width: W, height: H });
+  const x = c.getContext("2d");
+  const n = Math.max(1, Math.min(len, Math.round(W / (H * 1.1))));
+  const gap = Math.round(devicePixelRatio || 1) * 2;
+  const cw = (W - gap * (n - 1)) / n;
+  x.fillStyle = cssVar("--card");                          // gaps between thumbnails
+  x.fillRect(0, 0, W, H);
+  x.imageSmoothingQuality = "high";
+  for (let i = 0; i < n; i++) {
+    const f = state.frames[Math.min(len - 1, Math.floor(((i + 0.5) / n) * len))];
+    const s = Math.max(cw / f.width, H / f.height);       // cover the cell
+    const sw = cw / s, sh = H / s;
+    x.drawImage(f, (f.width - sw) / 2, (f.height - sh) / 2, sw, sh, i * (cw + gap), 0, cw, H);
+  }
+  return c;
+}
+
+function drawStrip() {
+  sizeStrip();
+  const W = strip.width, H = strip.height, dpr = devicePixelRatio || 1;
+  sctx.clearRect(0, 0, W, H);
+  if (!animated()) { sctx.fillStyle = cssVar("--key"); sctx.fillRect(0, 0, W, H); return; }
+  stripThumbs ??= buildThumbs();
+  sctx.drawImage(stripThumbs, 0, 0);
+  const len = state.frames.length;
+  const x0 = (state.trimStart / len) * W, x1 = ((state.trimEnd + 1) / len) * W;
+  sctx.globalAlpha = 0.72;                                   // fade what's trimmed away
+  sctx.fillStyle = cssVar("--bg");
+  sctx.fillRect(0, 0, x0, H);
+  sctx.fillRect(x1, 0, W - x1, H);
+  sctx.globalAlpha = 1;
+  const lw = 3 * dpr, accent = cssVar("--accent");
+  sctx.strokeStyle = accent;
+  sctx.lineWidth = lw;
+  sctx.beginPath();
+  sctx.roundRect(x0 + lw / 2, lw / 2, Math.max(lw, x1 - x0 - lw), H - lw, 8 * dpr);
+  sctx.stroke();
+  sctx.fillStyle = accent;                                   // grab handles
+  for (const hx of [x0 + lw / 2, x1 - lw / 2]) {
+    sctx.beginPath();
+    sctx.roundRect(hx - 3 * dpr, H * 0.28, 6 * dpr, H * 0.44, 3 * dpr);
+    sctx.fill();
+  }
+}
+
+let stripDrag = null;
+const frameAt = (e) => {
+  const r = strip.getBoundingClientRect();
+  return Math.min(state.frames.length - 1, Math.max(0, Math.floor(((e.clientX - r.left) / r.width) * state.frames.length)));
+};
+function moveTrim(f) {
+  if (stripDrag === "start") state.trimStart = Math.min(f, state.trimEnd);
+  else state.trimEnd = Math.max(f, state.trimStart);
+  syncControls(); drawCropper(); schedulePrepare();
+}
+strip.addEventListener("pointerdown", (e) => {
+  if (!animated() || state.busy) return;
+  strip.setPointerCapture(e.pointerId);
+  const f = frameAt(e);
+  stripDrag = Math.abs(f - state.trimStart) <= Math.abs(f - state.trimEnd) && f <= state.trimEnd ? "start" : "end";
+  moveTrim(f);
+});
+strip.addEventListener("pointermove", (e) => { if (stripDrag) moveTrim(frameAt(e)); });
+const endStripDrag = () => { stripDrag = null; };
+strip.addEventListener("pointerup", endStripDrag);
+strip.addEventListener("pointercancel", endStripDrag);
+new ResizeObserver(() => drawStrip()).observe(strip);
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { stripThumbs = null; drawStrip(); drawCropper(); });
 
 function update() {
   drawCropper();
@@ -247,7 +336,11 @@ $("trimEnd").addEventListener("input", (e) => {
   state.trimEnd = Math.max(+e.target.value, state.trimStart);
   syncControls(); schedulePrepare();
 });
-$("count").addEventListener("input", (e) => { state.count = +e.target.value; syncControls(); schedulePrepare(); });
+$("count").addEventListener("input", (e) => {
+  state.count = state.countWanted = +e.target.value;
+  state.countAuto = state.count >= +e.target.max;   // back at the top: follow the trim again
+  syncControls(); schedulePrepare();
+});
 $("speed").addEventListener("input", (e) => { state.speed = +e.target.value; syncControls(); updateReadout(); });
 $("zoom").addEventListener("input", (e) => { state.zoom = +e.target.value; syncControls(); drawCropper(); schedulePrepare(); });
 $("recenter").addEventListener("click", () => { state.cx = state.w / 2; state.cy = state.h / 2; state.zoom = 1; syncControls(); update(); });
@@ -332,6 +425,17 @@ $("send").addEventListener("click", async () => {
 });
 
 const escapeHtml = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+// ------------------------------------------------------ pinned preview --
+// The preview sticks while the steps scroll. Pin it low enough that, at the
+// bottom of the page, its card ends level with the last step's card.
+const studio = document.querySelector(".studio"), stage = document.querySelector(".stage");
+function pinStage() {
+  const tail = document.documentElement.scrollHeight - (studio.getBoundingClientRect().bottom + scrollY);
+  stage.style.setProperty("--pin", `${Math.max(24, innerHeight - tail - stage.offsetHeight)}px`);
+}
+new ResizeObserver(pinStage).observe(document.body);
+addEventListener("resize", pinStage);
 
 // ---------------------------------------------------------------- start --
 if (!bluetoothAvailable() || !("ImageDecoder" in window)) $("unsupported").hidden = false;
